@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { countEntriesForPasture, getEntryByLine, getPastureByIndex, getPastures, saveEntry, testPopulatePasture, setPastureStatus, getPastureStats, type Stats } from '@/lib/data';
 import type { GrassType } from '@/lib/types';
 import grassTypes from '@/data/grass-types.json';
+import { TESTING } from '@/config';
 
 export default function PasturePage({ params }: { params: { id: string; index: string } }) {
   const { id, index } = params;
@@ -295,30 +296,32 @@ export default function PasturePage({ params }: { params: { id: string; index: s
           )}
         </div>
 
-        <div>
-          <button
-            type="button"
-            className="mt-2 inline-flex w-full items-center justify-center rounded-md border px-4 py-3 disabled:opacity-50"
-            disabled={!pastureId}
-            onClick={async () => {
-              if (!pastureId) return;
-              const ok = window.confirm('Test populate all 100 lines with random data? This will overwrite existing lines for this pasture.');
-              if (!ok) return;
-              await testPopulatePasture(id, pastureId);
-              const newCount = await countEntriesForPasture(id, pastureId);
-              setCount(newCount);
-              setLineNo(100);
-              setPastureStatusState('complete');
-              const s = await getPastureStats(id, pastureId);
-              setStats(s);
-              const ps = await getPastures(id);
-              const counts = await Promise.all(ps.map((p) => countEntriesForPasture(id, p.id)));
-              setCompletePastures(counts.filter((c) => c >= 100).length);
-            }}
-          >
-            Test Populate
-          </button>
-        </div>
+        {TESTING && (
+          <div>
+            <button
+              type="button"
+              className="mt-2 inline-flex w-full items-center justify-center rounded-md border px-4 py-3 disabled:opacity-50"
+              disabled={!pastureId}
+              onClick={async () => {
+                if (!pastureId) return;
+                const ok = window.confirm('Test populate all 100 lines with random data? This will overwrite existing lines for this pasture.');
+                if (!ok) return;
+                await testPopulatePasture(id, pastureId);
+                const newCount = await countEntriesForPasture(id, pastureId);
+                setCount(newCount);
+                setLineNo(100);
+                setPastureStatusState('complete');
+                const s = await getPastureStats(id, pastureId);
+                setStats(s);
+                const ps = await getPastures(id);
+                const counts = await Promise.all(ps.map((p) => countEntriesForPasture(id, p.id)));
+                setCompletePastures(counts.filter((c) => c >= 100).length);
+              }}
+            >
+              Test Populate
+            </button>
+          </div>
+        )}
 
         {stats && (
           <div className="mt-2 grid grid-cols-2 gap-3 text-sm">

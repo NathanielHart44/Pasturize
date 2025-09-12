@@ -2,6 +2,7 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { getPastures, countEntriesForPasture, getReport, testPopulateReport } from '@/lib/data';
+import { TESTING } from '@/config';
 import type { Pasture, Report } from '@/lib/types';
 import RestartButton from '@/components/RestartButton';
 
@@ -28,6 +29,7 @@ export default function ReportPage({ params }: { params: { id: string } }) {
   }, [id]);
 
   const allComplete = pastures.length === 11 && Object.values(counts).every((c) => c >= 100);
+  const finalizeLabel = allComplete ? 'Finalize' : 'Review';
 
   return (
     <main className="p-4 max-w-screen-sm mx-auto">
@@ -70,23 +72,25 @@ export default function ReportPage({ params }: { params: { id: string } }) {
 
       <div className="mt-6 flex items-center gap-3">
         <RestartButton />
-        <button
-          className="inline-flex rounded-md border px-4 py-2"
-          onClick={async () => {
-            const ok = window.confirm('Test populate ALL pastures with random data? This will overwrite existing entries.');
-            if (!ok) return;
-            await testPopulateReport(id);
-            await refresh();
-          }}
-        >
-          Test Populate
-        </button>
+        {TESTING && (
+          <button
+            className="inline-flex rounded-md border px-4 py-2"
+            onClick={async () => {
+              const ok = window.confirm('Test populate ALL pastures with random data? This will overwrite existing entries.');
+              if (!ok) return;
+              await testPopulateReport(id);
+              await refresh();
+            }}
+          >
+            Test Populate
+          </button>
+        )}
         <Link
           href={`/report/${id}/finalize`}
-          className={`inline-flex rounded-md border px-4 py-2 ${allComplete ? '' : 'pointer-events-none opacity-50'}`}
-          aria-disabled={!allComplete}
+          className="inline-flex rounded-md border px-4 py-2"
+          title={allComplete ? 'All pastures complete' : 'Some pastures are incomplete'}
         >
-          Finalize
+          {finalizeLabel}
         </Link>
       </div>
     </main>
