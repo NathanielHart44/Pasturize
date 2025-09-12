@@ -128,13 +128,14 @@ function calcStats(entries: Entry[]): Stats {
     .map((e) => e.grassHeight as number);
   const avgGrassHeight = heights.length ? heights.reduce((a, b) => a + b, 0) / heights.length : null;
 
-  // Litter/Forb percentages as a share of all recorded lines (not just applicable ones)
-  const litterTrue = entries.filter((e) => !e.bareGround && e.litter === true).length;
-  const litterTotal = total; // denominator is total recorded lines
+  // Litter/Forb: compute over all non-bare lines, regardless of grass height presence
+  const applicable = entries.filter((e) => !e.bareGround);
+  const litterTrue = applicable.filter((e) => e.litter === true).length;
+  const litterTotal = applicable.length; // denominator: all non-bare lines
   const litterPct = litterTotal ? (litterTrue / litterTotal) * 100 : 0;
 
-  const forbTrue = entries.filter((e) => !e.bareGround && e.forbBush === true).length;
-  const forbTotal = total; // denominator is total recorded lines
+  const forbTrue = applicable.filter((e) => e.forbBush === true).length;
+  const forbTotal = applicable.length; // denominator: all non-bare lines
   const forbPct = forbTotal ? (forbTrue / forbTotal) * 100 : 0;
 
   return { total, bareCount, barePct, avgGrassHeight, litterTrue, litterTotal, litterPct, forbTrue, forbTotal, forbPct };
