@@ -15,41 +15,23 @@
     "moduleResolution": "Bundler",
     "resolveJsonModule": true,
     "isolatedModules": true,
-    "jsx": "preserve",
+    "jsx": "react-jsx",
     "incremental": true,
     "baseUrl": ".",
     "paths": {
-      "@/components/*": [
-        "src/components/*"
-      ],
-      "@/lib/*": [
-        "src/lib/*"
-      ],
-      "@/app/*": [
-        "src/app/*"
-      ],
-      "@/styles/*": [
-        "src/styles/*"
-      ],
-      "@/data/*": [
-        "data/*"
-      ],
-      "@/config": [
-        "src/config.ts"
-      ]
+      "@/components/*": ["src/components/*"],
+      "@/lib/*": ["src/lib/*"],
+      "@/styles/*": ["src/styles/*"],
+      "@/data/*": ["data/*"],
+      "@/*": ["src/*"],
+      "@/config": ["src/config.ts"]
     },
-    "plugins": [
-      {
-        "name": "next"
-      }
-    ]
+    "types": ["vite/client"]
   },
   "include": [
-    "next-env.d.ts",
     "src/**/*",
     "*.ts",
-    "*.tsx",
-    ".next/types/**/*.ts"
+    "*.tsx"
   ],
   "exclude": [
     "node_modules"

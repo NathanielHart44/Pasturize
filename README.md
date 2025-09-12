@@ -2,7 +2,7 @@
 
 ### Overview
 
-Pasturize is a simple mobile‑first React app for capturing pasture survey data. It’s designed to work offline in the browser (data stored locally with IndexedDB) and export completed reports as CSV or ZIP files. Built for field use: straightforward, thumb‑friendly, one‑line‑at‑a‑time entry.
+Pasturize is a simple mobile‑first React app for capturing pasture survey data. It’s designed to work offline in the browser (data stored locally with IndexedDB) and export completed reports as CSV or ZIP files. Built for field use: straightforward, thumb‑friendly, one‑line‑at‑a‑time entry. This repo now uses a plain React SPA (Vite) with a service worker for offline caching.
 
 ⸻
 
@@ -97,13 +97,22 @@ Storage: IndexedDB via Dexie.
 ⸻
 
 ### Tech Stack
-	•	Framework: Next.js (React) on Vercel.
+	•	Framework: React (Vite SPA).
 	•	Storage: Dexie (IndexedDB).
-	•	Forms: React Hook Form.
-	•	State Management: Zustand (optional).
 	•	CSV: papaparse or custom string builder.
 	•	ZIP: jszip.
 	•	Styling: Tailwind CSS.
+
+⸻
+
+### Dev
+
+```
+npm install
+npm run dev
+```
+
+Open http://localhost:5173. Build with `npm run build` and preview with `npm run preview`.
 
 ⸻
 

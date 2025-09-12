@@ -1,9 +1,7 @@
 "use client";
-import { useRouter } from 'next/navigation';
 import { db } from '@/lib/db';
 
 export default function RestartButton({ className = '' }: { className?: string }) {
-  const router = useRouter();
 
   const onRestart = async () => {
     const sure = window.confirm('Are you sure you want to restart? This will clear all local data.');
