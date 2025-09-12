@@ -228,7 +228,7 @@ export default function PasturePage({ params }: { params: { id: string; index: s
               disabled={pastureStatus === 'complete'}
               >
                 <option value="">Select…</option>
-                {grassTypes.map((t: { code: GrassType; name: string }) => (
+                {(grassTypes as { code: string; name: string }[]).map((t) => (
                   <option key={t.code} value={t.code}>
                     {t.name} ({t.code})
                   </option>
