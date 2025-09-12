@@ -1,0 +1,13 @@
+[
+  { "index": 1, "name": "Horse Pasture" },
+  { "index": 2, "name": "Elk Run Pasture" },
+  { "index": 3, "name": "Quarry Pasture" },
+  { "index": 4, "name": "Cottonwood" },
+  { "index": 5, "name": "Mesa Pasture" },
+  { "index": 6, "name": "Arroyo Pasture" },
+  { "index": 7, "name": "Indian Draw Pasture" },
+  { "index": 8, "name": "High Pasture" },
+  { "index": 9, "name": "Zuni Pasture" },
+  { "index": 10, "name": "Prop Canyon Pasture" },
+  { "index": 11, "name": "Homestead Pasture" }
+]

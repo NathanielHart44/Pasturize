@@ -1,0 +1,10 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Mobile-first sensible defaults */
+:root { color-scheme: light; }
+html, body { height: 100%; }
+body { @apply bg-white text-neutral-900 antialiased; }
+button { @apply touch-manipulation; }
+a { @apply text-blue-600; }

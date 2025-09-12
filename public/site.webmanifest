@@ -1,0 +1,18 @@
+{
+  "name": "Pasturize",
+  "short_name": "Pasturize",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#2e7d32",
+  "description": "Mobile-first pasture survey app (offline-friendly)",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
