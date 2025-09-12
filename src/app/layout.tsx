@@ -14,6 +14,9 @@ export const metadata: Metadata = {
   icons: {
     icon: '/favicon.svg',
     shortcut: '/favicon.svg',
+    other: [
+      { rel: 'mask-icon', url: '/favicon.svg', color: '#2e7d32' },
+    ],
   },
   manifest: '/site.webmanifest',
   themeColor: '#2e7d32',
