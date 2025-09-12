@@ -3,12 +3,14 @@ import HomePage from './spa/HomePage';
 import ReportPage from './spa/ReportPage';
 import PasturePage from './spa/PasturePage';
 import FinalizePage from './spa/FinalizePage';
+import PastureViewAllPage from './spa/PastureViewAllPage';
 
 type Route =
   | { name: 'home' }
   | { name: 'report'; id: string }
   | { name: 'pasture'; id: string; index: string }
-  | { name: 'finalize'; id: string };
+  | { name: 'finalize'; id: string }
+  | { name: 'pasture-view'; id: string; index: string };
 
 function parseHash(hash: string): Route {
   const h = hash.replace(/^#/, '') || '/';
@@ -19,6 +21,7 @@ function parseHash(hash: string): Route {
     return { name: 'report', id: parts[1] };
   }
   if (parts[0] === 'report' && parts[1] && parts[2] === 'pasture' && parts[3]) {
+    if (parts[4] === 'view') return { name: 'pasture-view', id: parts[1], index: parts[3] };
     return { name: 'pasture', id: parts[1], index: parts[3] };
   }
   if (parts[0] === 'report' && parts[1] && parts[2] === 'finalize') {
@@ -55,8 +58,9 @@ export default function AppRouter() {
       return <PasturePage params={{ id: route.id, index: route.index }} />;
     case 'finalize':
       return <FinalizePage params={{ id: route.id }} />;
+    case 'pasture-view':
+      return <PastureViewAllPage params={{ id: route.id, index: route.index }} />;
     default:
       return <HomePage navigate={navigate} />;
   }
 }
-

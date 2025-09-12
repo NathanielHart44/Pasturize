@@ -252,7 +252,7 @@ export default function PasturePage({ params }: { params: { id: string; index: s
         <div>
           <button
             type="button"
-            className="inline-flex items-center h-10 rounded-md border px-4"
+            className="mt-2 inline-flex w-full items-center justify-center rounded-md bg-black px-4 py-3 text-white disabled:opacity-50"
             onClick={saveAndNext}
             disabled={pastureStatus === 'complete'}
           >
@@ -346,4 +346,3 @@ export default function PasturePage({ params }: { params: { id: string; index: s
     </main>
   );
 }
-
