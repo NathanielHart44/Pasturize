@@ -2,57 +2,66 @@
 
 ### Overview
 
-Pasturize is a simple mobile‑first React app for capturing pasture survey data. It’s designed to work offline in the browser (data stored locally with IndexedDB) and export completed reports as CSV or ZIP files. Built for field use: straightforward, thumb‑friendly, one‑line‑at‑a‑time entry. This repo now uses a plain React SPA (Vite) with a service worker for offline caching.
+Pasturize is a mobile‑first pasture survey app. It runs offline in the browser (IndexedDB storage + service worker caching) and focuses on fast, thumb‑friendly, one‑line‑at‑a‑time data entry. Reports can be exported for sharing and analysis.
 
 ⸻
 
 ### Features
 
-	•	Mobile‑first UI: optimized for use on phones in the field.
-	•	11 pastures × 100 lines each (1,100 total entries per report).
-	•	Entry fields per line:
-	•	Foot Mark (1–100)
-	•	Bare Ground (True/False)
-	•	If Bare Ground = False → Grass Height (inches), Grass Type (dropdown), Litter (True/False), Forb/Bush (True/False).
-	•	Line‑by‑line editor: auto‑advances Foot Mark after save.
-	•	View & edit past lines: navigate to any entry.
-	•	Offline persistence: data never lost on refresh/tab close.
-	•	Export is a single CSV with all pastures combined.
+- Mobile‑first UI: optimized for phones and gloves‑on use.
+- 11 pastures × 100 lines each (1,100 entries per report).
+- Per‑line category (mutually exclusive):
+  - Bare Ground
+  - Grass → requires Grass Type and integer Grass Height (inches)
+  - Litter
+  - Forb/Bush
+  - Weed
+- Line editor auto‑advances the Foot Mark after save; quick navigation for previous/next.
+- View All per‑pasture table for quick browsing of saved lines.
+- Stats panels (per pasture and report):
+  - Grass %, Avg Grass Height (excludes 0/null), Bare Ground %, Litter %, Forb/Bush %, Weed %
+- Offline‑first: IndexedDB persistence; safe across refresh and tab close.
+- Export: ZIP containing per‑pasture CSV files; single CSV also available programmatically.
 
 ⸻
 
 ### Data Model
 ```
 export interface Report {
-	id: string;           // uuid
-	createdAt: string;    // ISO date
-	name: string;         // e.g. "Fall 2025 Survey"
-	status: 'in_progress' | 'complete';
+  id: string;            // uuid
+  createdAt: string;     // ISO date
+  name: string;          // e.g. "Fall 2025 Survey"
+  status: 'in_progress' | 'complete';
 }
 
 export interface Pasture {
-	id: string;           // uuid
-	reportId: string;
-	index: number;        // 1..11
-	name: string;
-	status: 'in_progress' | 'complete';
+  id: string;            // uuid
+  reportId: string;
+  index: number;         // 1..11
+  name: string;
+  status: 'in_progress' | 'complete';
 }
 
-export type GrassType = 'GG' | 'WW' | 'SD' | 'LL' | 'OW';
+export type GrassType = 'GG' | 'WW' | 'SD' | 'LL' | 'OT';
 
 export interface Entry {
-	id: string;           // uuid
-	reportId: string;
-	pastureId: string;
-	lineNo: number;       // 1..100
+  id: string;            // uuid
+  reportId: string;
+  pastureId: string;
+  lineNo: number;        // 1..100
 
-	bareGround: boolean;
-	grassHeight?: number; // inches
-	grassType?: GrassType;
-	litter?: boolean;
-	forbBush?: boolean;
+  // Exactly one category should be true per line
+  bareGround: boolean;
+  grass?: boolean;       // implied when grass fields are present
+  litter?: boolean;
+  forbBush?: boolean;
+  weed?: boolean;
 
-	updatedAt: string;    // ISO
+  // When category is Grass
+  grassHeight?: number;  // integer inches
+  grassType?: GrassType;
+
+  updatedAt: string;     // ISO
 }
 ```
 
@@ -61,47 +70,42 @@ Storage: IndexedDB via Dexie.
 ⸻
 
 ### Workflow
-	1.	Start a new report → app creates 11 pastures with 100 empty line slots.
-	2.	Open a pasture → see current Foot Mark (starts at 1).
-	3.	Fill line → Bare Ground?
-	•	If True, save & auto‑advance.
-	•	If False, enter Grass Height, Grass Type, Litter, Forb/Bush → Save & auto‑advance.
-	4.	Repeat until 100 lines are filled.
-	5.	Mark pasture complete → lock entries unless reopened.
-	6.	After all 11 pastures are complete → Export as CSV or ZIP.
+
+- Start a new report → the app creates 11 named pastures.
+- Open a pasture to begin at Foot Mark 1.
+- For each line, choose a Category. If Grass, select a Grass Type and enter integer Grass Height (inches).
+- Save to auto‑advance the Foot Mark; navigate to any line as needed.
+- Mark pasture Complete to lock it (can be reopened).
+- Review the report and Export when ready.
 
 ⸻
 
 ### Export Format
-	•	Filename: ${reportName}.csv
-	•	Columns: report_id,pasture_index,pasture_name,line_no,bare_ground,grass_height,grass_type,litter,forb_bush
+
+- Export button: generates a ZIP with one CSV per pasture.
+  - Per‑pasture CSV header: `Foot Mark,Bare Ground,Grass Height,Grass Type,Litter,Forb/Bush,Weed`
+  - Per‑pasture filename: `${reportName}_${reportId}_${pastureName}_${index}.csv`
+- Programmatic single‑CSV export is also available:
+  - Header: `Pasture Index,Pasture Name,Foot Mark,Bare Ground,Grass Height,Grass Type,Litter,Forb/Bush,Weed`
+  - Filename: `${reportName}_${reportId}.csv`
 
 ⸻
 
 ### UI Flow
-	•	Home Screen
-	•	Start New Report (enter name).
-	•	Continue existing reports.
-	•	Pasture Screen
-	•	Header: Pasture name + completion (e.g. 45/100).
-	•	Body: one‑line form.
-	•	Foot Mark (auto‑increment)
-	•	Bare Ground (Yes/No)
-	•	If No → Grass Height (number), Grass Type (dropdown), Litter (Yes/No), Forb/Bush (Yes/No)
-	•	Footer: Save & Next button.
-	•	Navigation: jump to previous/next line, or open list of entries.
-	•	Report Screen
-	•	List of 11 pastures with progress bars.
-	•	Export button enabled when all complete.
+
+- Home: continue latest report or create a new one.
+- Report: list of 11 pastures with progress; Restart and Review actions.
+- Pasture: one‑line editor (Category radio group); Save & Next; Prev/Next; View All.
+- Finalize: report‑level stats and Export.
 
 ⸻
 
 ### Tech Stack
-	•	Framework: React (Vite SPA).
-	•	Storage: Dexie (IndexedDB).
-	•	CSV: papaparse or custom string builder.
-	•	ZIP: jszip.
-	•	Styling: Tailwind CSS.
+
+- React (Vite SPA)
+- Dexie (IndexedDB)
+- JSZip (ZIP); custom CSV builder
+- Tailwind CSS
 
 ⸻
 
@@ -114,14 +118,14 @@ npm run dev
 
 Open http://localhost:5173. Build with `npm run build` and preview with `npm run preview`.
 
-⸻
-
-### Development Plan
-	1.	Scaffold Next.js app + Dexie schema.
-	2.	Build Home → Report → Pasture navigation.
-	3.	Implement line‑by‑line editor with Bare Ground branching.
-	4.	Add table/list view for editing past lines.
-	5.	Implement Export (CSV + ZIP).
-	6.	Polish mobile layout, add backup JSON export.
+Dev notes:
+- A service worker caches the SPA shell; use the in‑app Restart to reset IndexedDB and caches during testing.
+- Test‑only buttons (e.g., Test Populate) are toggled via `src/config.ts` → `export const TESTING = true`.
 
 ⸻
+
+### Notes
+
+- Data stays local to the device/browser unless exported.
+- The app is optimized for intermittent connectivity and quick field entry.
+

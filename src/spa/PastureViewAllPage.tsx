@@ -25,6 +25,8 @@ export default function PastureViewAllPage({ params }: { params: { id: string; i
     };
   }, [id, idx]);
 
+  const mark = (v: unknown) => (v === true ? 'x' : '');
+
   return (
     <main className="p-4 max-w-screen-sm mx-auto">
       <div className="mb-3 flex items-center justify-between">
@@ -38,28 +40,30 @@ export default function PastureViewAllPage({ params }: { params: { id: string; i
         <table className="min-w-full text-sm">
           <thead className="bg-neutral-50">
             <tr className="text-left">
-              <th className="px-3 py-2">Line No</th>
+              <th className="px-3 py-2">Foot Mark</th>
               <th className="px-3 py-2">Bare Ground</th>
               <th className="px-3 py-2">Grass Height</th>
               <th className="px-3 py-2">Grass Type</th>
               <th className="px-3 py-2">Litter</th>
               <th className="px-3 py-2">Forb/Bush</th>
+              <th className="px-3 py-2">Weed</th>
             </tr>
           </thead>
           <tbody>
             {rows.map((e) => (
               <tr key={e.id} className="border-t">
                 <td className="px-3 py-2">{e.lineNo}</td>
-                <td className="px-3 py-2">{String(e.bareGround)}</td>
+                <td className="px-3 py-2">{mark(e.bareGround)}</td>
                 <td className="px-3 py-2">{e.grassHeight ?? ''}</td>
                 <td className="px-3 py-2">{e.grassType ?? ''}</td>
-                <td className="px-3 py-2">{e.litter == null ? '' : String(e.litter)}</td>
-                <td className="px-3 py-2">{e.forbBush == null ? '' : String(e.forbBush)}</td>
+                <td className="px-3 py-2">{mark(e.litter)}</td>
+                <td className="px-3 py-2">{mark(e.forbBush)}</td>
+                <td className="px-3 py-2">{mark(e.weed)}</td>
               </tr>
             ))}
             {rows.length === 0 && (
               <tr className="border-t">
-                <td className="px-3 py-6 text-center" colSpan={6}>
+                <td className="px-3 py-6 text-center" colSpan={7}>
                   No entries yet for this pasture.
                 </td>
               </tr>
@@ -70,4 +74,3 @@ export default function PastureViewAllPage({ params }: { params: { id: string; i
     </main>
   );
 }
-

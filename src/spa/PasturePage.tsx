@@ -19,11 +19,10 @@ export default function PasturePage({ params }: { params: { id: string; index: s
   const [stats, setStats] = useState<Stats | null>(null);
 
   // Form state
-  const [bareGround, setBareGround] = useState<boolean>(true);
+  type Category = 'bareGround' | 'grass' | 'litter' | 'forbBush' | 'weed';
+  const [category, setCategory] = useState<Category>('bareGround');
   const [grassHeight, setGrassHeight] = useState<string>('');
   const [grassType, setGrassType] = useState<GrassType | ''>('');
-  const [litter, setLitter] = useState<boolean>(false);
-  const [forbBush, setForbBush] = useState<boolean>(false);
 
   // Load pasture meta and default line
   useEffect(() => {
@@ -62,17 +61,23 @@ export default function PasturePage({ params }: { params: { id: string; index: s
       if (cancelled) return;
       if (!e) {
         // default values for a new line
-        setBareGround(true);
+        setCategory('bareGround');
         setGrassHeight('');
         setGrassType('');
-        setLitter(false);
-        setForbBush(false);
       } else {
-        setBareGround(e.bareGround);
+        // Derive category from flags, default to grass if grass fields are present
+        const cat: Category = e.bareGround
+          ? 'bareGround'
+          : e.weed
+          ? 'weed'
+          : e.litter
+          ? 'litter'
+          : e.forbBush
+          ? 'forbBush'
+          : 'grass';
+        setCategory(cat);
         setGrassHeight(e.grassHeight != null ? String(e.grassHeight) : '');
         setGrassType((e.grassType as GrassType) ?? '');
-        setLitter(Boolean(e.litter));
-        setForbBush(Boolean(e.forbBush));
       }
     });
     return () => {
@@ -82,15 +87,30 @@ export default function PasturePage({ params }: { params: { id: string; index: s
 
   const saveAndNext = useCallback(async () => {
     if (!pastureId) return;
+    // Validation: when category is grass, require integer height and type
+    if (category === 'grass') {
+      const h = grassHeight.trim();
+      const isInt = /^\d+$/.test(h) && Number(h) > 0;
+      if (!isInt) {
+        alert('Please enter grass height as a positive whole number.');
+        return;
+      }
+      if (!grassType) {
+        alert('Please select a grass type.');
+        return;
+      }
+    }
     const payload = {
       reportId: id,
       pastureId,
       lineNo,
-      bareGround,
-      grassHeight: !bareGround && grassHeight !== '' ? parseFloat(grassHeight.replace(',', '.')) : undefined,
-      grassType: !bareGround && grassType ? grassType : undefined,
-      litter: !bareGround ? Boolean(litter) : undefined,
-      forbBush: !bareGround ? Boolean(forbBush) : undefined,
+      bareGround: category === 'bareGround',
+      grassHeight: category === 'grass' && grassHeight !== '' ? parseInt(grassHeight, 10) : undefined,
+      grassType: category === 'grass' && grassType ? grassType : undefined,
+      grass: category === 'grass' ? true : undefined,
+      litter: category === 'litter' ? true : undefined,
+      forbBush: category === 'forbBush' ? true : undefined,
+      weed: category === 'weed' ? true : undefined,
     } as const;
     await saveEntry(payload as any);
 
@@ -102,10 +122,7 @@ export default function PasturePage({ params }: { params: { id: string; index: s
     const s = await getPastureStats(id, pastureId);
     setStats(s);
 
-    if (newCount >= 100 && pastureStatus !== 'complete') {
-      await setPastureStatus(pastureId, 'complete');
-      setPastureStatusState('complete');
-    }
+    // Do not auto-complete the pasture when reaching 100; require explicit click on Complete Pasture
     if (newCount < 100 && pastureStatus !== 'in_progress') {
       await setPastureStatus(pastureId, 'in_progress');
       setPastureStatusState('in_progress');
@@ -114,7 +131,7 @@ export default function PasturePage({ params }: { params: { id: string; index: s
     const ps = await getPastures(id);
     const counts = await Promise.all(ps.map((p) => countEntriesForPasture(id, p.id)));
     setCompletePastures(counts.filter((c) => c >= 100).length);
-  }, [id, pastureId, lineNo, bareGround, grassHeight, grassType, litter, forbBush, pastureStatus]);
+  }, [id, pastureId, lineNo, category, grassHeight, grassType, pastureStatus]);
 
   const goPrev = () => setLineNo((n) => Math.max(1, n - 1));
   const goNext = () => setLineNo((n) => Math.min(100, n + 1));
@@ -133,12 +150,15 @@ export default function PasturePage({ params }: { params: { id: string; index: s
             Back
           </a>
         </div>
-        <p className="text-sm opacity-80">{count}/100 complete</p>
-        <p className="text-xs opacity-70">Pasture {idx} of {totalPastures || 11} • {completePastures}/{totalPastures || 11} pastures complete</p>
+        {/* Moved the completion counter next to Foot Mark */}
+        <p className="text-xs opacity-70">Pasture {idx} of {totalPastures || 11}</p>
       </header>
 
       <section className="space-y-4">
-        <div className="text-sm">Foot Mark</div>
+        <div className="flex items-baseline justify-between text-sm">
+          <span>Foot Mark</span>
+          <span className="opacity-70">{count}/100 complete</span>
+        </div>
         <div className="flex items-center gap-3">
           <div>
             <input
@@ -170,51 +190,81 @@ export default function PasturePage({ params }: { params: { id: string; index: s
         </div>
 
         <div>
-          <label className="block text-sm">Bare Ground</label>
-          <div className="mt-2 flex gap-4">
+          <label className="block text-sm">Category</label>
+          <div className="mt-2 grid grid-cols-2 gap-3 text-sm">
             <label className="inline-flex items-center gap-2">
               <input
                 type="radio"
-                name="bareGround"
-                checked={bareGround === true}
-                onChange={() => setBareGround(true)}
+                name="category"
+                checked={category === 'bareGround'}
+                onChange={() => setCategory('bareGround')}
                 disabled={pastureStatus === 'complete'}
               />
-              Yes
+              Bare Ground
             </label>
             <label className="inline-flex items-center gap-2">
               <input
                 type="radio"
-                name="bareGround"
-                checked={bareGround === false}
-                onChange={() => setBareGround(false)}
+                name="category"
+                checked={category === 'grass'}
+                onChange={() => setCategory('grass')}
                 disabled={pastureStatus === 'complete'}
               />
-              No
+              Grass
+            </label>
+            <label className="inline-flex items-center gap-2">
+              <input
+                type="radio"
+                name="category"
+                checked={category === 'litter'}
+                onChange={() => setCategory('litter')}
+                disabled={pastureStatus === 'complete'}
+              />
+              Litter
+            </label>
+            <label className="inline-flex items-center gap-2">
+              <input
+                type="radio"
+                name="category"
+                checked={category === 'forbBush'}
+                onChange={() => setCategory('forbBush')}
+                disabled={pastureStatus === 'complete'}
+              />
+              Forb/Bush
+            </label>
+            <label className="inline-flex items-center gap-2">
+              <input
+                type="radio"
+                name="category"
+                checked={category === 'weed'}
+                onChange={() => setCategory('weed')}
+                disabled={pastureStatus === 'complete'}
+              />
+              Weed
             </label>
           </div>
         </div>
 
-        {!bareGround && (
+        {category === 'grass' && (
           <div className="space-y-3">
             <label className="block">
               <span className="block text-sm">Grass Height (inches)</span>
               <input
                 className="mt-1 w-32 rounded-md border px-3 py-2"
                 type="text"
-                inputMode="decimal"
-                pattern="[0-9]*[.,]?[0-9]*"
+                inputMode="numeric"
+                pattern="\\d*"
                 value={grassHeight}
                 onChange={(e) => {
                   const raw = e.target.value;
-                  const cleaned = raw.replace(/[^0-9.,]/g, '').replace(/([.,]).*\1/g, '$1');
+                  const cleaned = raw.replace(/[^0-9]/g, '');
                   setGrassHeight(cleaned);
-                  const num = parseFloat(cleaned.replace(',', '.'));
+                  const num = parseInt(cleaned, 10);
                   if (!Number.isNaN(num) && num > 0 && !grassType) {
                     setGrassType('GG');
                   }
                 }}
-                placeholder="e.g. 5.5"
+                placeholder="e.g. 5"
                 disabled={pastureStatus === 'complete'}
               />
             </label>
@@ -235,17 +285,6 @@ export default function PasturePage({ params }: { params: { id: string; index: s
                 ))}
               </select>
             </label>
-
-            <div className="flex gap-6">
-              <label className="inline-flex items-center gap-2">
-                <input type="checkbox" checked={litter} onChange={(e) => setLitter(e.target.checked)} disabled={pastureStatus === 'complete'} />
-                Litter
-              </label>
-              <label className="inline-flex items-center gap-2">
-                <input type="checkbox" checked={forbBush} onChange={(e) => setForbBush(e.target.checked)} disabled={pastureStatus === 'complete'} />
-                Forb/Bush
-              </label>
-            </div>
           </div>
         )}
 
@@ -264,14 +303,10 @@ export default function PasturePage({ params }: { params: { id: string; index: s
           {pastureStatus !== 'complete' ? (
             <button
               type="button"
-              className="mt-2 inline-flex w-full items-center justify-center rounded-md border px-4 py-3 disabled:opacity-50"
-              disabled={!pastureId || lineNo !== 100}
+              className="mt-2 inline-flex w-full items-center justify-center rounded-md bg-black px-4 py-3 text-white disabled:opacity-50"
+              disabled={count < 100}
               onClick={async () => {
                 if (!pastureId) return;
-                if (count < 100) {
-                  const ok = window.confirm('Not all 100 lines are filled. Complete and lock this pasture anyway?');
-                  if (!ok) return;
-                }
                 await setPastureStatus(pastureId, 'complete');
                 setPastureStatusState('complete');
               }}
@@ -281,7 +316,7 @@ export default function PasturePage({ params }: { params: { id: string; index: s
           ) : (
             <button
               type="button"
-              className="mt-2 inline-flex w-full items-center justify-center rounded-md border px-4 py-3"
+              className="mt-2 inline-flex w-full items-center justify-center rounded-md bg-black px-4 py-3 text-white"
               onClick={async () => {
                 if (!pastureId) return;
                 const ok = window.confirm('Reopen this pasture for editing?');
@@ -325,12 +360,16 @@ export default function PasturePage({ params }: { params: { id: string; index: s
         {stats && (
           <div className="mt-2 grid grid-cols-2 gap-3 text-sm">
             <div className="rounded-md border p-2">
-              <div className="opacity-70">Bare Ground</div>
-              <div className="text-lg font-medium">{stats.barePct.toFixed(0)}%</div>
+              <div className="opacity-70">Grass</div>
+              <div className="text-lg font-medium">{stats.grassPct.toFixed(0)}%</div>
             </div>
             <div className="rounded-md border p-2">
               <div className="opacity-70">Avg Grass Height</div>
               <div className="text-lg font-medium">{stats.avgGrassHeight == null ? '—' : stats.avgGrassHeight.toFixed(1)} in</div>
+            </div>
+            <div className="rounded-md border p-2">
+              <div className="opacity-70">Bare Ground</div>
+              <div className="text-lg font-medium">{stats.barePct.toFixed(0)}%</div>
             </div>
             <div className="rounded-md border p-2">
               <div className="opacity-70">Litter</div>
@@ -339,6 +378,10 @@ export default function PasturePage({ params }: { params: { id: string; index: s
             <div className="rounded-md border p-2">
               <div className="opacity-70">Forb/Bush</div>
               <div className="text-lg font-medium">{stats.forbPct.toFixed(0)}%</div>
+            </div>
+            <div className="rounded-md border p-2">
+              <div className="opacity-70">Weed</div>
+              <div className="text-lg font-medium">{stats.weedPct.toFixed(0)}%</div>
             </div>
           </div>
         )}

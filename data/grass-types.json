@@ -2,7 +2,9 @@
   { "code": "GG", "name": "Gramma" },
   { "code": "WW", "name": "Western Wheat" },
   { "code": "SD", "name": "Sand Drop" },
-  { "code": "LL", "name": "Gelleta" },
-  { "code": "OW", "name": "Other/Weed" }
+  { "code": "LL", "name": "Galleta" },
+  { "code": "RM", "name": "Ring Muley" },
+  { "code": "NT", "name": "Needle & Thread" },
+  { "code": "OT", "name": "Other" }
 ]
 

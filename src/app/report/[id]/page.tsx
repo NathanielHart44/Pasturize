@@ -29,7 +29,6 @@ export default function ReportPage({ params }: { params: { id: string } }) {
   }, [id]);
 
   const allComplete = pastures.length === 11 && Object.values(counts).every((c) => c >= 100);
-  const finalizeLabel = allComplete ? 'Finalize' : 'Review';
 
   return (
     <main className="p-4 max-w-screen-sm mx-auto">
@@ -38,7 +37,7 @@ export default function ReportPage({ params }: { params: { id: string } }) {
       <section className="mt-4 space-y-2">
         {pastures.map((p) => {
           const c = counts[p.id] ?? 0;
-          const isComplete = p.status === 'complete' || c >= 100;
+          const isComplete = p.status === 'complete';
           const indicator = isComplete ? '✓' : c === 0 ? '☐' : '–';
           return (
             <Link
@@ -71,10 +70,20 @@ export default function ReportPage({ params }: { params: { id: string } }) {
       </section>
 
       <div className="mt-6 flex items-center gap-3">
-        <RestartButton />
-        {TESTING && (
+        <RestartButton className="w-1/2 justify-center py-3" />
+        <Link
+          href={`/report/${id}/finalize`}
+          className="inline-flex w-1/2 items-center justify-center rounded-md bg-black px-4 py-3 text-white"
+          title={allComplete ? 'All pastures complete' : 'Some pastures are incomplete'}
+        >
+          Review
+        </Link>
+      </div>
+
+      {TESTING && (
+        <div className="mt-3">
           <button
-            className="inline-flex rounded-md border px-4 py-2"
+            className="inline-flex w-full items-center justify-center rounded-md border px-4 py-3"
             onClick={async () => {
               const ok = window.confirm('Test populate ALL pastures with random data? This will overwrite existing entries.');
               if (!ok) return;
@@ -84,15 +93,8 @@ export default function ReportPage({ params }: { params: { id: string } }) {
           >
             Test Populate
           </button>
-        )}
-        <Link
-          href={`/report/${id}/finalize`}
-          className="inline-flex rounded-md border px-4 py-2"
-          title={allComplete ? 'All pastures complete' : 'Some pastures are incomplete'}
-        >
-          {finalizeLabel}
-        </Link>
-      </div>
+        </div>
+      )}
     </main>
   );
 }

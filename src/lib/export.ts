@@ -1,10 +1,36 @@
 import { db } from './db';
+import type { Entry } from './types';
 import JSZip from 'jszip';
 
 // Human-friendly CSV header (capitalized, no underscores)
-const CSV_HEADER = 'Pasture Index,Pasture Name,Line No,Bare Ground,Grass Height,Grass Type,Litter,Forb/Bush';
+const CSV_HEADER = 'Pasture Index,Pasture Name,Foot Mark,Bare Ground,Grass Height,Grass Type,Litter,Forb/Bush,Weed';
 // Per-pasture CSV header (no pasture columns, per request)
-const CSV_HEADER_PASTURE = 'Line No,Bare Ground,Grass Height,Grass Type,Litter,Forb/Bush';
+const CSV_HEADER_PASTURE = 'Foot Mark,Bare Ground,Grass Height,Grass Type,Litter,Forb/Bush,Weed';
+export const PER_PASTURE_COLUMNS = [
+  'Foot Mark',
+  'Bare Ground',
+  'Grass Height',
+  'Grass Type',
+  'Litter',
+  'Forb/Bush',
+  'Weed',
+] as const;
+
+function mark(val: unknown): string {
+  return val === true ? 'x' : '';
+}
+
+export function perPastureRowValues(e: Entry): (string | number)[] {
+  return [
+    String(e.lineNo),
+    mark(e.bareGround),
+    e.grassHeight ?? '',
+    e.grassType ?? '',
+    mark(e.litter),
+    mark(e.forbBush),
+    mark(e.weed),
+  ];
+}
 
 export async function exportCsv(reportId: string): Promise<{ filename: string; csv: string }> {
   const report = await db.reports.get(reportId);
@@ -28,11 +54,12 @@ export async function exportCsv(reportId: string): Promise<{ filename: string; c
       String(p?.index ?? ''),
       p?.name ?? '',
       String(e.lineNo),
-      String(e.bareGround),
+      mark(e.bareGround),
       e.grassHeight ?? '',
       e.grassType ?? '',
-      e.litter ?? '',
-      e.forbBush ?? '',
+      mark(e.litter),
+      mark(e.forbBush),
+      mark(e.weed),
     ];
     return cols.map(escapeCsv).join(',');
   });
@@ -52,11 +79,12 @@ export type ExportRow = {
   pasture_index: number | '';
   pasture_name: string;
   line_no: number;
-  bare_ground: boolean;
+  bare_ground: string; // 'x' or ''
   grass_height: number | '';
   grass_type: string;
-  litter: boolean | '';
-  forb_bush: boolean | '';
+  litter: string; // 'x' or ''
+  forb_bush: string; // 'x' or ''
+  weed: string; // 'x' or ''
 };
 
 export async function getExportRows(reportId: string): Promise<ExportRow[]> {
@@ -69,11 +97,12 @@ export async function getExportRows(reportId: string): Promise<ExportRow[]> {
       pasture_index: p?.index ?? '',
       pasture_name: p?.name ?? '',
       line_no: e.lineNo,
-      bare_ground: e.bareGround,
+      bare_ground: mark(e.bareGround),
       grass_height: e.grassHeight ?? '',
       grass_type: e.grassType ?? '',
-      litter: e.litter ?? '',
-      forb_bush: e.forbBush ?? '',
+      litter: mark(e.litter),
+      forb_bush: mark(e.forbBush),
+      weed: mark(e.weed),
     };
   });
   // Sort by pasture index then line number for readability
@@ -102,14 +131,7 @@ export async function exportZip(reportId: string): Promise<{ filename: string; b
 
   for (const p of pastures) {
     const list = (byPasture.get(p.id) ?? []).slice().sort((a, b) => a.lineNo - b.lineNo);
-    const rows = list.map((e) => [
-      String(e.lineNo),
-      String(e.bareGround),
-      e.grassHeight ?? '',
-      e.grassType ?? '',
-      e.litter ?? '',
-      e.forbBush ?? '',
-    ].map(escapeCsv).join(','));
+    const rows = list.map((e) => perPastureRowValues(e).map(escapeCsv).join(','));
     const csv = [CSV_HEADER_PASTURE, ...rows].join('\n');
     const fname = `${sanitizeFilename(report.name)}_${report.id}_${sanitizeFilename(p.name)}_${p.index}.csv`;
     zip.file(fname, csv);

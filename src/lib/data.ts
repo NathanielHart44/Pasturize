@@ -41,12 +41,20 @@ export async function getPastureByIndex(reportId: string, index: number): Promis
 }
 
 export async function countEntriesForPasture(reportId: string, pastureId: string): Promise<number> {
-  return db.entries.where({ reportId, pastureId }).count();
+  // Count distinct footmarks (lineNo) saved for this pasture
+  const entries = await db.entries.where({ reportId, pastureId }).toArray();
+  const unique = new Set(entries.map((e) => e.lineNo));
+  return unique.size;
 }
 
 export async function saveEntry(entry: Omit<Entry, 'id' | 'updatedAt'> & { id?: string }): Promise<string> {
   const now = new Date().toISOString();
-  const id = entry.id ?? crypto.randomUUID();
+  // Upsert by composite key [reportId+pastureId+lineNo] to avoid duplicate rows inflating counts
+  const existing = await db.entries
+    .where('[reportId+pastureId+lineNo]')
+    .equals([entry.reportId, entry.pastureId, entry.lineNo])
+    .first();
+  const id = existing?.id ?? entry.id ?? crypto.randomUUID();
   await db.entries.put({ ...entry, id, updatedAt: now });
   return id;
 }
@@ -70,23 +78,34 @@ export async function testPopulatePasture(reportId: string, pastureId: string): 
   const now = new Date().toISOString();
   const entries: Entry[] = Array.from({ length: 100 }, (_, i) => {
     const lineNo = i + 1;
-    const isBare = Math.random() < 0.75; // 75% bare ground
+    // Weighted category selection: 75% bare, others distributed
+    const r = Math.random();
+    const category = r < 0.75 ? 'bare' : r < 0.85 ? 'grass' : r < 0.92 ? 'litter' : r < 0.98 ? 'forb' : 'weed';
+
     const entry: Entry = {
       id: crypto.randomUUID(),
       reportId,
       pastureId,
       lineNo,
-      bareGround: isBare,
+      bareGround: category === 'bare',
       updatedAt: now,
     };
-    if (!isBare) {
-      const height = Math.round((Math.random() * 12 + 1) * 10) / 10; // 1.0 - 13.0 inches
+
+    if (category === 'grass') {
+      // Integer inches 1..13
+      const height = Math.floor(Math.random() * 13) + 1;
       const t = grassTypes[Math.floor(Math.random() * grassTypes.length)]?.code as any;
       entry.grassHeight = height;
       entry.grassType = t;
-      entry.litter = Math.random() < 0.3;
-      entry.forbBush = Math.random() < 0.3;
+      entry.grass = true;
+    } else if (category === 'litter') {
+      entry.litter = true;
+    } else if (category === 'forb') {
+      entry.forbBush = true;
+    } else if (category === 'weed') {
+      entry.weed = true;
     }
+
     return entry;
   });
 
@@ -106,36 +125,46 @@ export async function testPopulateReport(reportId: string): Promise<void> {
 
 export type Stats = {
   total: number;
-  bareCount: number;
   barePct: number; // 0..100
-  avgGrassHeight: number | null;
-  litterTrue: number;
-  litterTotal: number;
+  grassPct: number; // 0..100
   litterPct: number; // 0..100
-  forbTrue: number;
-  forbTotal: number;
   forbPct: number; // 0..100
+  weedPct: number; // 0..100
+  avgGrassHeight: number | null;
 };
 
 function calcStats(entries: Entry[]): Stats {
   const total = entries.length;
-  const bareCount = entries.filter((e) => e.bareGround).length;
-  const barePct = total ? (bareCount / total) * 100 : 0;
+  const pct = (n: number) => (total ? (n / total) * 100 : 0);
 
-  // Average grass height: treat bare-ground lines (and missing heights) as 0; average over all recorded lines
-  const heightSum = entries.reduce((sum, e) => sum + (typeof e.grassHeight === 'number' ? e.grassHeight : 0), 0);
-  const avgGrassHeight = total ? heightSum / total : null;
-
-  // Litter/Forb: denominator is all recorded lines; bare-ground lines count as false (null)
+  const bareTrue = entries.filter((e) => e.bareGround === true).length;
   const litterTrue = entries.filter((e) => e.litter === true).length;
-  const litterTotal = total; // denominator: all recorded lines
-  const litterPct = litterTotal ? (litterTrue / litterTotal) * 100 : 0;
-
   const forbTrue = entries.filter((e) => e.forbBush === true).length;
-  const forbTotal = total; // denominator: all recorded lines
-  const forbPct = forbTotal ? (forbTrue / forbTotal) * 100 : 0;
+  const weedTrue = entries.filter((e) => e.weed === true).length;
 
-  return { total, bareCount, barePct, avgGrassHeight, litterTrue, litterTotal, litterPct, forbTrue, forbTotal, forbPct };
+  // Grass lines: explicit grass flag OR inferred from absence of other categories and presence of grass data
+  const isGrass = (e: Entry) =>
+    e.grass === true ||
+    (!e.bareGround && !e.weed && !e.litter && !e.forbBush && (e.grassType != null || e.grassHeight != null));
+  const grassTrue = entries.filter(isGrass).length;
+
+  // Average grass height, excluding 0 and nulls
+  const grassHeights = entries
+    .map((e) => (typeof e.grassHeight === 'number' ? e.grassHeight : null))
+    .filter((h): h is number => h != null && h > 0);
+  const avgGrassHeight = grassHeights.length
+    ? grassHeights.reduce((a, b) => a + b, 0) / grassHeights.length
+    : null;
+
+  return {
+    total,
+    barePct: pct(bareTrue),
+    grassPct: pct(grassTrue),
+    litterPct: pct(litterTrue),
+    forbPct: pct(forbTrue),
+    weedPct: pct(weedTrue),
+    avgGrassHeight,
+  };
 }
 
 export async function getPastureStats(reportId: string, pastureId: string): Promise<Stats> {

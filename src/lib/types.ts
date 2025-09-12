@@ -13,7 +13,7 @@ export interface Pasture {
   status: 'in_progress' | 'complete';
 }
 
-export type GrassType = 'GG' | 'WW' | 'SD' | 'LL' | 'OW';
+export type GrassType = 'GG' | 'WW' | 'SD' | 'LL' | 'OT';
 
 export interface Entry {
   id: string; // uuid
@@ -26,7 +26,10 @@ export interface Entry {
   grassType?: GrassType;
   litter?: boolean;
   forbBush?: boolean;
+  weed?: boolean;
+  // Optional flag if we ever need to explicitly mark grass as the category.
+  // Currently, grass is implied when none of the above flags are true and grass fields are present.
+  grass?: boolean;
 
   updatedAt: string; // ISO
 }
-
