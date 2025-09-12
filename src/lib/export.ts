@@ -1,4 +1,5 @@
 import { db } from './db';
+import JSZip from 'jszip';
 
 // Human-friendly CSV header (capitalized, no underscores)
 const CSV_HEADER = 'Pasture Index,Pasture Name,Line No,Bare Ground,Grass Height,Grass Type,Litter,Forb/Bush';
@@ -97,13 +98,7 @@ export async function exportZip(reportId: string): Promise<{ filename: string; b
     arr.push(e);
     byPasture.set(e.pastureId, arr);
   }
-  let JSZipMod: any;
-  try {
-    JSZipMod = await import('jszip');
-  } catch (e) {
-    throw new Error('ZIP export requires jszip to be installed. Please run: npm install jszip');
-  }
-  const zip = new JSZipMod.default();
+  const zip = new JSZip();
 
   for (const p of pastures) {
     const list = (byPasture.get(p.id) ?? []).slice().sort((a, b) => a.lineNo - b.lineNo);
