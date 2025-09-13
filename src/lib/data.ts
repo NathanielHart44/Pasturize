@@ -123,6 +123,125 @@ export async function testPopulateReport(reportId: string): Promise<void> {
   }
 }
 
+function parseBoolCell(v: string): boolean {
+  const s = (v ?? '').trim().toLowerCase();
+  return s === 'x' || s === 'true' || s === '1' || s === 'yes' || s === 'y';
+}
+
+function parseCsv(text: string): string[][] {
+  const rows: string[][] = [];
+  let cur: string[] = [];
+  let field = '';
+  let inQuotes = false;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (inQuotes) {
+      if (ch === '"') {
+        if (text[i + 1] === '"') {
+          field += '"';
+          i++;
+        } else {
+          inQuotes = false;
+        }
+      } else {
+        field += ch;
+      }
+    } else {
+      if (ch === '"') {
+        inQuotes = true;
+      } else if (ch === ',') {
+        cur.push(field);
+        field = '';
+      } else if (ch === '\n') {
+        cur.push(field);
+        rows.push(cur);
+        cur = [];
+        field = '';
+      } else if (ch === '\r') {
+        // ignore
+      } else {
+        field += ch;
+      }
+    }
+  }
+  // flush
+  cur.push(field);
+  if (cur.length > 1 || (cur.length === 1 && cur[0] !== '')) rows.push(cur);
+  return rows;
+}
+
+export async function importCsvForPasture(
+  reportId: string,
+  pastureId: string,
+  csvText: string,
+  forbCountInput: number
+): Promise<void> {
+  const rows = parseCsv(csvText);
+  if (rows.length === 0) throw new Error('CSV is empty');
+  const header = rows[0].map((h) => h.trim().toLowerCase());
+  const idxLine = header.findIndex((h) => h === 'line no' || h === 'foot mark' || h === 'line');
+  const idxBare = header.findIndex((h) => h === 'bare ground');
+  const idxHeight = header.findIndex((h) => h === 'grass height');
+  const idxType = header.findIndex((h) => h === 'grass type');
+  const idxLitter = header.findIndex((h) => h === 'litter');
+  const idxForb = header.findIndex((h) => h === 'forb/bush' || h === 'forb' || h === 'forb bush');
+  if (idxLine < 0 || idxBare < 0) throw new Error('Missing required columns (Line No and Bare Ground)');
+
+  const body = rows.slice(1);
+  type Temp = { lineNo: number; bare: boolean; height?: number; type?: string; litter?: boolean; forb?: boolean };
+  const list: Temp[] = [];
+  for (const r of body) {
+    const lineRaw = r[idxLine] ?? '';
+    const ln = Number(String(lineRaw).replace(/[^0-9]/g, ''));
+    if (!Number.isFinite(ln) || ln <= 0) continue;
+    const bare = parseBoolCell(r[idxBare] ?? '');
+    const heightStr = (r[idxHeight] ?? '').trim();
+    const heightNum = heightStr ? Math.round(parseFloat(heightStr.replace(',', '.'))) : undefined;
+    const type = (r[idxType] ?? '').trim().toUpperCase();
+    const litter = idxLitter >= 0 ? parseBoolCell(r[idxLitter] ?? '') : false;
+    const forb = idxForb >= 0 ? parseBoolCell(r[idxForb] ?? '') : false;
+    list.push({ lineNo: ln, bare, height: Number.isFinite(heightNum as any) ? (heightNum as number) : undefined, type, litter, forb });
+  }
+
+  // Determine which forb entries to convert to weed based on provided Forb count (to keep as Forb)
+  const forbLines = list.filter((t) => !t.bare && t.forb).sort((a, b) => a.lineNo - b.lineNo);
+  const keepForb = Math.max(0, Math.min(forbCountInput || 0, forbLines.length));
+  const weedSet = new Set<number>(forbLines.slice(keepForb).map((t) => t.lineNo));
+
+  const now = new Date().toISOString();
+  const entries: Entry[] = list.map((t) => {
+    const e: Entry = {
+      id: crypto.randomUUID(),
+      reportId,
+      pastureId,
+      lineNo: t.lineNo,
+      bareGround: t.bare === true,
+      updatedAt: now,
+    } as Entry;
+    if (!e.bareGround) {
+      if ((t.height && t.height > 0) || (t.type && t.type !== '')) {
+        e.grass = true;
+        e.grassHeight = t.height && t.height > 0 ? t.height : undefined;
+        e.grassType = (t.type as any) || undefined;
+      } else if (t.forb) {
+        if (weedSet.has(t.lineNo)) {
+          e.weed = true;
+        } else {
+          e.forbBush = true;
+        }
+      } else if (t.litter) {
+        e.litter = true;
+      }
+    }
+    return e;
+  });
+
+  await db.transaction('rw', db.entries, async () => {
+    await db.entries.where({ reportId, pastureId }).delete();
+    await db.entries.bulkAdd(entries);
+  });
+}
+
 export type Stats = {
   total: number;
   barePct: number; // 0..100

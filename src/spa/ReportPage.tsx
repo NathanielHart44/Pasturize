@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from 'react';
-import { getPastures, countEntriesForPasture, getReport, testPopulateReport } from '../lib/data';
+import { getPastures, countEntriesForPasture, getReport, testPopulateReport, importCsvForPasture } from '../lib/data';
 import { TESTING } from '../config';
 import type { Pasture, Report } from '../lib/types';
 import RestartButton from '../components/RestartButton';
@@ -10,6 +10,7 @@ export default function ReportPage({ params }: { params: { id: string } }) {
   const [report, setReport] = useState<Report | null>(null);
   const [pastures, setPastures] = useState<Pasture[]>([]);
   const [counts, setCounts] = useState<Record<string, number>>({});
+  const [importState, setImportState] = useState<{ file?: File; pastureId?: string; forbCount: string }>({ forbCount: '' });
 
   async function refresh() {
     const r = await getReport(id);
