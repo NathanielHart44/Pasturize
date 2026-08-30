@@ -207,7 +207,10 @@ export default function PasturePage({ params }: { params: { id: string; index: s
                 type="radio"
                 name="category"
                 checked={category === 'grass'}
-                onChange={() => setCategory('grass')}
+                onChange={() => {
+                  setCategory('grass');
+                  setGrassType((current) => current || 'GG');
+                }}
                 disabled={pastureStatus === 'complete'}
               />
               Grass

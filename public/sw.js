@@ -1,8 +1,13 @@
 /* Simple offline-first service worker for Pasturize */
-const CACHE_NAME = 'pasturize-cache-v1';
+const CACHE_NAME = 'pasturize-cache-v2';
 const ASSET_CACHE = [
   '/',
-  '/favicon.svg',
+  '/favicon.ico',
+  '/favicon-32x32.png',
+  '/favicon-16x16.png',
+  '/apple-touch-icon.png',
+  '/icon-192.png',
+  '/icon-512.png',
   '/site.webmanifest',
 ];
 
@@ -41,4 +46,3 @@ self.addEventListener('fetch', (event) => {
     })
   );
 });
-
